@@ -4,8 +4,8 @@ import requests
 from lxml import html
 from yarl import URL
 
-from element import ElementNotFoundError, Element
-from selector import By
+from .element import ElementNotFoundError, Element
+from .selector import By
 
 
 BASE_URL = 'https://www.vendr.com'

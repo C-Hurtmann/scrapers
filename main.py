@@ -4,9 +4,9 @@ import pandas as pd
 
 from collections import namedtuple
 
-from model import Base, ProductDTO, Product
-from page import Page
-from selector import By
+from core.model import Base, ProductDTO, Product
+from core.page import Page
+from core.selector import By
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 

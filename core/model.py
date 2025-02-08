@@ -8,9 +8,9 @@ from lxml import etree
 from sqlalchemy import Integer, Column, String
 from sqlalchemy.orm import declarative_base
 
-from element import ElementNotFoundError
-from page import Page
-from selector import By
+from .element import ElementNotFoundError
+from .page import Page
+from .selector import By
 
 Base = declarative_base()
 
