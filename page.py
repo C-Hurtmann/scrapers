@@ -12,7 +12,7 @@ BASE_URL = 'https://www.vendr.com'
 
 class Page:
 
-    def __init__(self, source: requests.Response):
+    def __init__(self, source: requests.Response) -> None:
         self.source: html.HtmlElement = html.fromstring(source.content)
         self.found_elements: list[html.HtmlElement] = []
         self.raise_exception = None
@@ -41,4 +41,3 @@ class Page:
         if not self.found_elements:
             return Element(html_element=None, is_empty=True)
         return Element(html_element=self.found_elements[0])
-
