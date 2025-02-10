@@ -1,6 +1,7 @@
 import re
 import time
 import multiprocessing as mp
+import pandas as pd
 from collections import namedtuple
 from typing import Self
 
@@ -149,9 +150,10 @@ class ProcessManager:
         print('Gathering data and shutting down...')
         for work_process in self.workers.values():
             work_process.join()
-        print('Books collected', len(self.result))
+        print('Books collected\n', pd.DataFrame(list(self.result)).head())
+
         print('All workers shut down.')
 
 
 if __name__ == '__main__':
-    ProcessManager().start()
+     ProcessManager().start()
