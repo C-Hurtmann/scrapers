@@ -3,7 +3,7 @@ from typing import Self, Type
 
 from playwright.sync_api import Page as PWPage, Locator
 
-from elements import Element, Text, Link, Image
+from core.elements import Element, Text, Link, Image
 
 
 def set_bomb():

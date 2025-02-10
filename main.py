@@ -8,7 +8,7 @@ from typing import Self
 from playwright.sync_api import sync_playwright
 from word2number import w2n
 
-from session import Session
+from core.session import Session
 
 mp.set_start_method('fork')
 
