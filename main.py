@@ -17,22 +17,6 @@ class ProcessCrashedError(Exception):
     pass
 
 
-class Process(mp.Process):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.__is_crashed = False
-
-    def run(self) -> None:
-        try:
-            super().run()
-        except ProcessCrashedError as e:
-            self.__is_crashed = True
-            raise e
-
-    def is_crashed(self) -> bool:
-        return self.__is_crashed
-
-
 Task = namedtuple('Task', 'scrape_function, data')
 
 
@@ -78,7 +62,7 @@ def fetch_data(session: Session, link: str) -> None:
     )
 
 
-def worker(worker_id: int, task_queue: mp.Queue):
+def worker(worker_id: int, task_queue: mp.Queue) -> None:
     with sync_playwright() as p:
         with Session(playwright=p) as session:
             while not task_queue.empty():
@@ -101,22 +85,25 @@ class ProcessManager:
     tasks = manager.Queue()
     result = manager.list()
 
-    def __init__(self, num_processes: int = 3):
+    def __init__(self, num_processes: int = 3) -> None:
         self.num_processes = num_processes
         self.workers = {}
         self.health_checker = None
 
     @classmethod
-    def add_task(cls, task: Task | None):
+    def add_task(cls, task: Task) -> None:
         cls.tasks.put(task)
 
-    def start_worker(self, worker_id):
-        work_process = Process(target=worker, args=(worker_id, self.tasks))
+    def get_result(self) -> list[dict]:
+        return list(self.result)
+
+    def start_worker(self, worker_id: int) -> None:
+        work_process = mp.Process(target=worker, args=(worker_id, self.tasks))
         work_process.start()
         self.workers[worker_id] = work_process
         print(f'Worker {worker_id} started')
 
-    def check_health(self):
+    def check_health(self) -> None:
         print('Starting health checker')
         number_of_crashes = 0
         try:
@@ -146,14 +133,14 @@ class ProcessManager:
         self.check_health()
         return self
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         print('Gathering data and shutting down...')
         for work_process in self.workers.values():
             work_process.join()
-        print('Books collected\n', pd.DataFrame(list(self.result)).head())
-
-        print('All workers shut down.')
+        print('All workers shut down')
 
 
 if __name__ == '__main__':
-     ProcessManager().start()
+    result = ProcessManager().start().get_result()
+    df = pd.DataFrame(list(result))
+    print(df)
