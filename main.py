@@ -1,16 +1,19 @@
 import re
 import time
 import multiprocessing as mp
-from dataclasses import dataclass
-from typing import Callable, Self
+from collections import namedtuple
+from typing import Self
 
-from playwright.sync_api import sync_playwright, Playwright
+from playwright.sync_api import sync_playwright
 from word2number import w2n
 
-from page import Page
 from session import Session
 
 mp.set_start_method('fork')
+
+
+class ProcessCrashedError(Exception):
+    pass
 
 
 class Process(mp.Process):
@@ -21,7 +24,7 @@ class Process(mp.Process):
     def run(self) -> None:
         try:
             super().run()
-        except Exception as e:
+        except ProcessCrashedError as e:
             self.__is_crashed = True
             raise e
 
@@ -29,10 +32,7 @@ class Process(mp.Process):
         return self.__is_crashed
 
 
-@dataclass
-class Task:
-    scrape_function: Callable
-    data: dict
+Task = namedtuple('Task', 'scrape_function, data')
 
 
 def collect_book_links_on_page(session: Session, page_number: int) -> None:
@@ -83,19 +83,22 @@ def worker(worker_id: int, task_queue: mp.Queue):
             while not task_queue.empty():
                 task = task_queue.get(timeout=2)
                 func = task.scrape_function
-                kwargs = task.data
+                kwargs = task.data.copy()
                 print(f'Worker {worker_id} performing {func.__name__} with {kwargs}')
                 kwargs.update({'session': session})
                 try:
                     func(**kwargs)
                 except Exception as e:
                     print(f'Something went wrong {e}')
-                    raise e
+                    task_queue.put(task, timeout=2)
+                    time.sleep(2)
+                    raise ProcessCrashedError
 
 
 class ProcessManager:
-    tasks = mp.Queue()
-    result = []
+    manager = mp.Manager()
+    tasks = manager.Queue()
+    result = manager.list()
 
     def __init__(self, num_processes: int = 3):
         self.num_processes = num_processes
@@ -113,15 +116,20 @@ class ProcessManager:
         print(f'Worker {worker_id} started')
 
     def check_health(self):
+        print('Starting health checker')
+        number_of_crashes = 0
         try:
-            while any(work_process.is_alive() for work_process in self.workers.values()):
+            while not self.tasks.empty():
                 for worker_id, work_process in list(self.workers.items()):
-                    if work_process.is_crashed():
+                    if not work_process.is_alive():
                         print(f'WARNING: Worker {worker_id} crashed, restarting...')
+                        number_of_crashes += 1
                         self.start_worker(worker_id)
-                print('INFO: Health checked')
-                time.sleep(3)
+                    else:
+                        print('INFO: Health checked')
+                        time.sleep(3)
         finally:
+            print(f'Finishing scrapping with {number_of_crashes} crashes')
             self.shutdown()
 
     def start(self) -> Self:
@@ -129,7 +137,7 @@ class ProcessManager:
         with sync_playwright() as p:
             with Session(playwright=p) as session:
                 page = session.go_to(root='')
-                page_qty = int(page.find('//*[@class="current"]').text.strip().split(' ')[-1])
+                page_qty = int(page.find('//*[@class="current"]', no_bombs=True).text.strip().split(' ')[-1])
         for page_number in range(1, page_qty + 1):
             self.add_task(Task(scrape_function=collect_book_links_on_page, data={'page_number': page_number}))
         for i in range(1, self.num_processes + 1):

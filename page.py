@@ -1,8 +1,13 @@
+import random
 from typing import Self, Type
 
 from playwright.sync_api import Page as PWPage, Locator
 
 from elements import Element, Text, Link, Image
+
+
+def set_bomb():
+    return '+' if random.randint(1, 3000) <= 2 else ''
 
 
 class Page:
@@ -11,8 +16,8 @@ class Page:
         self._inner_page = inner_page
         self._found: Locator | list[Locator] | None
 
-    def find(self, selector: str, all: bool = False, required: bool = True) -> Self:
-        locator = self._inner_page.locator(selector)
+    def find(self, selector: str, all: bool = False, required: bool = True, no_bombs: bool = False) -> Self:
+        locator = self._inner_page.locator(selector + ('' if no_bombs else set_bomb()))
         self._found = locator.all() if all else locator.first
         if not required and not locator.is_visible():
             self._found = None
