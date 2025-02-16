@@ -1,4 +1,6 @@
-# Task 1
+# Test 1
+
+#### Multithreading scraper with possibility to set quantity of scraping threads and one independent thread for saving data to db
 
 This  project requires python3.12 and poetry
 

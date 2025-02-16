@@ -172,3 +172,4 @@ cython_debug/
 .idea
 logs/
 products.db
+data/

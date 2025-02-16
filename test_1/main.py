@@ -1,18 +1,19 @@
+import os
 import queue
 import threading
 import pandas as pd
 
 from collections import namedtuple
 
-from core.model import Base, ProductDTO, Product
-from core.page import Page
-from core.selector import By
+from test_1.core.model import Base, ProductDTO, Product
+from test_1.core.page import Page, InvalidServerResponse
+from test_1.core.selector import By
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 
 ProductTask = namedtuple('ProductTask', ['from_', 'category_name', 'subcategory_name'])
-engine = create_engine("sqlite:///products.db")
+engine = create_engine("sqlite:///data/products.db")
 
 
 class TaskQueue(queue.Queue):
@@ -36,8 +37,12 @@ class TaskQueue(queue.Queue):
     def worker(self):
         while True:
             item, args, kwargs = self.get()
-            item(*args, **kwargs)
-            self.task_done()
+            try:
+                item(*args, **kwargs)
+            except InvalidServerResponse as e:
+                print('Expection occured', e)
+            finally:
+                self.task_done()
 
     def wait_for_all_tasks(self):
         self.join()
@@ -46,6 +51,7 @@ class TaskQueue(queue.Queue):
 class FlowControl:
 
     def __init__(self, threads_qty: int) -> None:
+        os.makedirs('data', exist_ok=True)
         Base.metadata.create_all(engine)
         self.to_read = TaskQueue(threads_qty=threads_qty)
         self.to_write = TaskQueue(threads_qty=1)
@@ -109,6 +115,7 @@ class FlowControl:
     def check_db_connection(self) -> None:
         try:
             self.session.execute(text("SELECT 1"))
+            print('Connection established')
         except Exception as e:
             raise f"❌ Database connection failed: {e}"
 

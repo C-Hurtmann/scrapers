@@ -10,6 +10,11 @@ from .selector import By
 
 BASE_URL = 'https://www.vendr.com'
 
+
+class InvalidServerResponse(Exception):
+    pass
+
+
 class Page:
 
     def __init__(self, source: requests.Response) -> None:
@@ -24,7 +29,7 @@ class Page:
         res = requests.get(url=url)
         if res.ok:
             return Page(source=res)
-        raise Exception(f'Invalid server response - {res.status_code}')
+        raise InvalidServerResponse(f'Invalid server response - {res.status_code} {url}')
 
     def find(self, by: By, raise_exception: bool = True) -> Self:
         self.raise_exception = raise_exception
