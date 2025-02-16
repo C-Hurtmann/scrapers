@@ -1,6 +1,6 @@
 from playwright.sync_api import Playwright
 
-from core.page import Page
+from test_2.core.page import Page
 
 
 class Session:
